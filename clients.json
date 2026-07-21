@@ -1,0 +1,25 @@
+{
+    "clients": [
+        {
+            "id": "test",
+            "user": "test",
+            "ip": "192.168.56.10",
+            "port": 22,
+            "tags": ["mule"]
+        },
+        {
+            "id": "test1",
+            "user": "test1",
+            "ip": "192.168.56.11",
+            "port": 22,
+            "tags": ["mule"]
+        },
+        {
+            "id": "yeet",
+            "user": "yeet",
+            "ip": "127.0.0.1",
+            "port": 22,
+            "tags": ["yeet"]
+        }
+    ]
+}
