@@ -58,19 +58,16 @@ int main(int argc, char* argv[]) {
     }
 
     std::string configPath    = "../connection_config.json";
-    std::string msgConfigPath = "../msg_config.json";
     if (argc > 1) configPath    = argv[1];
-    if (argc > 2) msgConfigPath = argv[2];
 
     std::cout << "========================================\n"
               << "        Client Agent Starting\n"
               << "========================================\n"
               << "Client ID:  " << clientId    << "\n"
-              << "Config:     " << configPath  << "\n"
-              << "Msg Config: " << msgConfigPath << "\n\n";
+              << "Config:     " << configPath  << "\n";
 
     Agent agent;
-    if (!agent.initialize(configPath, msgConfigPath, clientId)) {
+    if (!agent.initialize(configPath, clientId)) {
         std::cerr << "Failed to initialize agent\n";
         return 1;
     }

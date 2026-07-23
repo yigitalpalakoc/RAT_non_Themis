@@ -19,7 +19,6 @@ bool LockfileManager::acquireLock() {
         return true;
 
     const char* paths[] = {
-        "/var/run/client_agent.lock",
         "/tmp/client_agent.lock",
         nullptr
     };

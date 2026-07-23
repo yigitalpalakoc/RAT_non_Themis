@@ -31,11 +31,3 @@ target_link_libraries(client_agent PRIVATE
     ${DBUS_LIBRARIES}
     pthread
 )
-
-# Optional: copy binary to ./bin/
-add_custom_command(TARGET client_agent POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/bin"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "$<TARGET_FILE:client_agent>"
-        "${CMAKE_SOURCE_DIR}/bin/client_agent"
-)
