@@ -165,7 +165,7 @@ void RemoteController::pushConfigToClients(const std::string& serverIp) {
 }
 
 void RemoteController::pushAgentBinaryToClients() {
-    const std::string agentBinaryPath = "../client_agent/bin/client_agent";
+    const std::string agentBinaryPath = "../client_agent/build/client_agent";
     if (access(agentBinaryPath.c_str(), F_OK) == -1) {
         std::cerr << "Warning: client_agent binary not found at " << agentBinaryPath
                   << " – skipping agent push.\n";
@@ -369,14 +369,8 @@ void RemoteController::handlePluginCommand(const std::string& line) {
 
     if (cmd == "status") {
         cmdStatus();
-
-    } else if (cmd == "clients") {
-        cmdClients();
-
-    } else if (cmd == "connected") {
-        cmdConnected();
-
-    } else if (cmd == "msg") {
+    }
+    else if (cmd == "msg") {
 
         if (tokens.size() < 3) {
             std::cout << "Usage: server msg <clientId> <text>\n";
@@ -430,23 +424,6 @@ void RemoteController::cmdStatus() {
                       << (isConn ? " [CONNECTED]" : " [DISCONNECTED]") << "\n";
         }
     }
-}
-
-void RemoteController::cmdClients() {
-    std::cout << "\n=== Configured Clients ===\n";
-    for (const auto& c : m_clients)
-        std::cout << "  • " << c.getDisplayName() << "\n";
-}
-
-void RemoteController::cmdConnected() {
-    if (!m_tcpHandler) {
-        std::cout << "TCP server not running.\n";
-        return;
-    }
-    auto connected = m_tcpHandler->getConnectedClients();
-    std::cout << "Connected clients (" << connected.size() << "):\n";
-    for (const auto& id : connected)
-        std::cout << "  " << id << "\n";
 }
 
 void RemoteController::cmdMsg(const std::string& clientId, const std::string& text) {
@@ -575,8 +552,6 @@ void RemoteController::printHelp() const {
         "\n"
         "  Server commands (prefix with 'server'):\n"
         "    server status                    Show server and client status\n"
-        "    server clients                   List all configured clients\n"
-        "    server connected                 List currently connected clients\n"
         "    server msg <id> <text>           Send message to a client\n"
         "    server broadcast <text>          Broadcast to all connected clients\n"
         "    server tag <tag> <text>          Send to all clients with a given tag\n"

@@ -27,8 +27,6 @@ private:
     void handleShellCommandOriginal(const std::string& line);
     void handlePluginCommand(const std::string& line);
     void cmdStatus();
-    void cmdClients();
-    void cmdConnected();
     void cmdMsg(const std::string& clientId, const std::string& text);
     void cmdBroadcast(const std::string& text);
     void cmdTag(const std::string& tag, const std::string& text);
