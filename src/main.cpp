@@ -84,7 +84,6 @@ int main(int argc, char* argv[]) {
 
     controller.startTCPServer();
     controller.pushConfigToClients();
-    controller.pushMsgConfigToClients();
     controller.pushAgentBinaryToClients();
     controller.printHelp();
 
@@ -146,7 +145,6 @@ int main(int argc, char* argv[]) {
         if (line.empty()) continue;
         if (line == "quit" || line == "exit") break;
         if (line == "help" || line == "?")  { controller.printHelp(); continue; }
-        if (line == "rules-help")           { controller.printRulesHelp(); continue; }
         controller.parseAndExecute(line);
     }
     done:

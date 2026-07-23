@@ -3,7 +3,6 @@
 
 #include "Client.hpp"
 #include "TCPHandler.hpp"
-#include "RulesManager.hpp"
 #include <string>
 #include <vector>
 #include <memory>
@@ -15,13 +14,11 @@ public:
 
     bool loadClients(const std::string& configPath);
     void pushConfigToClients(const std::string& serverIp = "");
-    void pushMsgConfigToClients();
     void pushAgentBinaryToClients();
     void startTCPServer();
     void stopTCPServer();
     void parseAndExecute(const std::string& line);
     void printHelp() const;
-    void printRulesHelp() const;
     std::string trim(const std::string& str) const;
 
 private:
@@ -35,15 +32,6 @@ private:
     void cmdMsg(const std::string& clientId, const std::string& text);
     void cmdBroadcast(const std::string& text);
     void cmdTag(const std::string& tag, const std::string& text);
-    void cmdRulesList(const std::string& clientId);
-    void cmdRulesAdd(const std::string& clientId, const std::string& filterArgs);
-    void cmdRulesRemove(const std::string& clientId, const std::string& name);
-    void cmdRulesSet(const std::string& clientId, const std::string& name, bool enabled);
-    void cmdRulesSettings(const std::string& clientId);
-    void cmdRulesSetLog(const std::string& clientId, const std::string& val);
-    void cmdRulesSetFwd(const std::string& clientId, const std::string& val);
-    void cmdRulesPush(const std::string& clientId);
-    void pushConfigToClient(const std::string& clientId);
     void executeCommand(const std::string& clientId, const std::string& command);
     void executeCommandByTag(const std::string& tag, const std::string& command);
     void executeCommandOnAll(const std::string& command);
@@ -58,6 +46,5 @@ private:
 
     std::vector<Client> m_clients;
     std::unique_ptr<TCPHandler> m_tcpHandler;
-    RulesManager m_rulesManager;
     std::string m_serverIp;
 };

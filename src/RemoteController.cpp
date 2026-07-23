@@ -164,33 +164,6 @@ void RemoteController::pushConfigToClients(const std::string& serverIp) {
     std::cout << "Configuration pushed to all clients.\n";
 }
 
-void RemoteController::pushMsgConfigToClients() {
-    for (const auto& client : m_clients) {
-        std::string json = m_rulesManager.serializeConfig(client.getId());
-
-        char temp_template[] = "/tmp/rat_msgcfg_XXXXXX";
-        int fd = mkstemp(temp_template);
-        if (fd < 0) {
-            std::cerr << "Failed to create temp file for msg_config\n";
-            continue;
-        }
-        if (!writeAll(fd, json.c_str(), json.size())) {
-            std::cerr << "Failed to write msg_config for " << client.getId() << "\n";
-            close(fd);
-            unlink(temp_template);
-            continue;
-        }
-        close(fd);
-
-        std::string remotePath = "/home/" + client.getUser() + "/msg_config.json";
-        std::cout << "Uploading msg_config to " << client.getId() << " at " << remotePath << std::endl;
-        SCPManager::getInstance().uploadFile(client, temp_template, remotePath, false);
-
-        unlink(temp_template);
-    }
-    std::cout << "Message configurations pushed to all clients.\n";
-}
-
 void RemoteController::pushAgentBinaryToClients() {
     const std::string agentBinaryPath = "../client_agent/bin/client_agent";
     if (access(agentBinaryPath.c_str(), F_OK) == -1) {
@@ -439,48 +412,6 @@ void RemoteController::handlePluginCommand(const std::string& line) {
             std::cout << "Usage: server tag <tag> <text>\n";
         else
             cmdTag(tokens[1], text);
-
-    } else if (cmd == "rules") {
-        if (tokens.size() < 3) {
-            std::cout << "Usage: server rules <subcommand> <clientId> [...]\n"
-                         "Type 'rules-help' for details.\n";
-            return;
-        }
-        const std::string& sub = tokens[1];
-        const std::string& cid = tokens[2];
-
-        if (sub == "list") {
-            cmdRulesList(cid);
-        } else if (sub == "add") {
-            size_t argsStart = skipWords(line, 0, 3);
-            cmdRulesAdd(cid, trim(line.substr(argsStart)));
-        } else if (sub == "remove") {
-            if (tokens.size() >= 4)
-                cmdRulesRemove(cid, tokens[3]);
-            else
-                std::cout << "Usage: server rules remove <id> <n>\n";
-        } else if (sub == "enable" || sub == "disable") {
-            if (tokens.size() >= 4)
-                cmdRulesSet(cid, tokens[3], sub == "enable");
-            else
-                std::cout << "Usage: server rules enable/disable <id> <n>\n";
-        } else if (sub == "settings") {
-            cmdRulesSettings(cid);
-        } else if (sub == "set-log") {
-            if (tokens.size() >= 4)
-                cmdRulesSetLog(cid, tokens[3]);
-            else
-                std::cout << "Usage: server rules set-log <id> <true|false>\n";
-        } else if (sub == "set-fwd") {
-            if (tokens.size() >= 4)
-                cmdRulesSetFwd(cid, tokens[3]);
-            else
-                std::cout << "Usage: server rules set-fwd <id> <true|false>\n";
-        } else if (sub == "push") {
-            cmdRulesPush(cid);
-        } else {
-            std::cout << "Unknown rules subcommand. Type 'rules-help' for usage.\n";
-        }
     } else {
         std::cout << "Unknown server command. Type 'help' for available commands.\n";
     }
@@ -544,140 +475,6 @@ void RemoteController::cmdTag(const std::string& tag, const std::string& text) {
         }
     }
     std::cout << "Sent to " << sent << " clients with tag '" << tag << "'\n";
-}
-
-void RemoteController::cmdRulesList(const std::string& clientId) {
-    auto filters = m_rulesManager.listFilters(clientId);
-    std::cout << "\n=== dbus_filters for client '" << clientId << "' (" << filters.size() << " filter(s)) ===\n";
-    if (filters.empty()) {
-        std::cout << "  (none)\n\n";
-        return;
-    }
-    for (size_t i = 0; i < filters.size(); i++) {
-        const auto& f = filters[i];
-        std::cout << "  [" << i << "] " << (f.enabled ? "[ON ] " : "[OFF] ")
-                  << '"' << f.name << "\"\n"
-                  << "        bus=" << f.bus
-                  << "  log=" << (f.log ? "true" : "false")
-                  << "  forward=" << (f.forward ? "true" : "false") << "\n";
-        if (!f.match.empty())
-            std::cout << "        match: " << f.match << "\n";
-        std::cout << "        types: [";
-        for (size_t j = 0; j < f.types.size(); j++) {
-            if (j) std::cout << ", ";
-            std::cout << f.types[j];
-        }
-        std::cout << "]\n";
-    }
-    std::cout << "\n";
-}
-
-void RemoteController::cmdRulesAdd(const std::string& clientId, const std::string& filterArgs) {
-    std::istringstream iss(filterArgs);
-    std::string name, bus, logStr, fwdStr, typesToken, match;
-    iss >> name >> bus >> logStr >> fwdStr >> typesToken;
-    std::getline(iss, match);
-    match = trim(match);
-
-    if (name.empty() || bus.empty() || logStr.empty() || fwdStr.empty()) {
-        std::cout << "Usage: server rules add <id> <n> <bus> <log> <forward> [types] [match]\n";
-        return;
-    }
-
-    DbusFilter f;
-    f.name    = name;
-    f.bus     = bus;
-    f.log     = (logStr == "true" || logStr == "1");
-    f.forward = (fwdStr == "true" || fwdStr == "1");
-    if (typesToken == "all" || typesToken.empty()) {
-        f.types = {"method_call", "method_return", "signal", "error"};
-    } else {
-        std::stringstream tss(typesToken);
-        std::string t;
-        while (std::getline(tss, t, ','))
-            if (!t.empty()) f.types.push_back(t);
-    }
-    f.match   = match;
-    f.enabled = true;
-
-    if (m_rulesManager.addFilter(clientId, f)) {
-        std::cout << "Filter added.\n";
-        if (m_tcpHandler && m_tcpHandler->isClientConnected(clientId)) {
-            std::string json = m_rulesManager.serializeConfig(clientId);
-            m_tcpHandler->sendToClient(clientId, "MSG_CONFIG:" + json);
-            std::cout << "Config pushed to client.\n";
-        }
-    } else {
-        std::cout << "Failed to add filter (maybe duplicate name).\n";
-    }
-}
-
-void RemoteController::cmdRulesRemove(const std::string& clientId, const std::string& name) {
-    if (m_rulesManager.removeFilter(clientId, name)) {
-        std::cout << "Filter removed.\n";
-        if (m_tcpHandler && m_tcpHandler->isClientConnected(clientId)) {
-            std::string json = m_rulesManager.serializeConfig(clientId);
-            m_tcpHandler->sendToClient(clientId, "MSG_CONFIG:" + json);
-        }
-    } else {
-        std::cout << "Filter not found.\n";
-    }
-}
-
-void RemoteController::cmdRulesSet(const std::string& clientId, const std::string& name, bool enabled) {
-    if (m_rulesManager.setFilterEnabled(clientId, name, enabled)) {
-        std::cout << "Filter " << (enabled ? "enabled" : "disabled") << ".\n";
-        if (m_tcpHandler && m_tcpHandler->isClientConnected(clientId)) {
-            std::string json = m_rulesManager.serializeConfig(clientId);
-            m_tcpHandler->sendToClient(clientId, "MSG_CONFIG:" + json);
-        }
-    } else {
-        std::cout << "Filter not found.\n";
-    }
-}
-
-void RemoteController::cmdRulesSettings(const std::string& clientId) {
-    auto s = m_rulesManager.getSettings(clientId);
-    std::cout << "\n=== global_settings for client '" << clientId << "' ===\n"
-              << "  default_log:      " << (s.default_log ? "true" : "false") << "\n"
-              << "  default_forward:  " << (s.default_forward ? "true" : "false") << "\n"
-              << "  log_file:         " << s.log_file << "\n"
-              << "  max_message_size: " << s.max_message_size << "\n\n";
-}
-
-void RemoteController::cmdRulesSetLog(const std::string& clientId, const std::string& val) {
-    GlobalSettings s = m_rulesManager.getSettings(clientId);
-    s.default_log = (val == "true" || val == "1");
-    if (m_rulesManager.setSettings(clientId, s)) {
-        std::cout << "default_log set to " << (s.default_log ? "true" : "false") << "\n";
-        pushConfigToClient(clientId);
-    }
-}
-
-void RemoteController::cmdRulesSetFwd(const std::string& clientId, const std::string& val) {
-    GlobalSettings s = m_rulesManager.getSettings(clientId);
-    s.default_forward = (val == "true" || val == "1");
-    if (m_rulesManager.setSettings(clientId, s)) {
-        std::cout << "default_forward set to " << (s.default_forward ? "true" : "false") << "\n";
-        pushConfigToClient(clientId);
-    }
-}
-
-void RemoteController::cmdRulesPush(const std::string& clientId) {
-    if (!m_tcpHandler || !m_tcpHandler->isClientConnected(clientId)) {
-        std::cout << "Client not connected.\n";
-        return;
-    }
-    std::string json = m_rulesManager.serializeConfig(clientId);
-    m_tcpHandler->sendToClient(clientId, "MSG_CONFIG:" + json);
-    std::cout << "Config pushed to " << clientId << "\n";
-}
-
-void RemoteController::pushConfigToClient(const std::string& clientId) {
-    if (m_tcpHandler && m_tcpHandler->isClientConnected(clientId)) {
-        std::string json = m_rulesManager.serializeConfig(clientId);
-        m_tcpHandler->sendToClient(clientId, "MSG_CONFIG:" + json);
-    }
 }
 
 void RemoteController::executeCommand(const std::string& clientId, const std::string& command) {
@@ -783,44 +580,9 @@ void RemoteController::printHelp() const {
         "    server msg <id> <text>           Send message to a client\n"
         "    server broadcast <text>          Broadcast to all connected clients\n"
         "    server tag <tag> <text>          Send to all clients with a given tag\n"
-        "    server rules list <id>           List dbus_filters for client\n"
-        "    server rules add <id> <n> <bus> <log> <forward> [types] [match]\n"
-        "    server rules remove <id> <n>  Remove filter\n"
-        "    server rules enable <id> <n>  Enable filter\n"
-        "    server rules disable <id> <n> Disable filter\n"
-        "    server rules settings <id>       Show global settings\n"
-        "    server rules set-log <id> <true|false>\n"
-        "    server rules set-fwd <id> <true|false>\n"
-        "    server rules push <id>           Push current config to client\n"
-        "\n"
-        "  rules-help                         Detailed rules syntax\n"
         "  help / ?                          Show this help\n"
         "  quit / exit                       Quit\n"
         "============================================================\n"
         "Loaded " << m_clients.size() << " clients\n"
         "Server port: " << SERVER_PORT << "\n";
-}
-
-void RemoteController::printRulesHelp() const {
-    std::cout << R"(
-Rules add syntax:
-  server rules add <clientId> <n> <bus> <log> <forward> [types] [match]
-
-  <n>     Unique filter name, use quotes for multi-word: "My Filter"
-  <bus>      system | session | both
-  <log>      true | false
-  <forward>  true | false
-  [types]    Comma-separated list: method_call,method_return,signal,error
-             or "all" for all types.
-  [match]    D-Bus match rule string (optional)
-
-Examples:
-  server rules add client1 "SystemD Services" system true true method_call,method_return,signal "sender='org.freedesktop.systemd1'"
-  server rules add client1 "All Traffic" both false false all
-  server rules remove client1 "All Traffic"
-  server rules enable client1 "SystemD Services"
-  server rules settings client1
-  server rules set-log client1 false
-  server rules push client1
-)";
 }

@@ -18,7 +18,6 @@ bool LockfileManager::acquireLock() {
         return true;
 
     const char* paths[] = {
-        "/var/run/rat.lock",
         "/tmp/rat.lock",
         nullptr
     };

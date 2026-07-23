@@ -18,7 +18,6 @@ set(SOURCES
     src/LockfileManager.cpp
     src/RemoteController.cpp
     src/MessageHandler.cpp
-    src/RulesManager.cpp
     src/TCPHandler.cpp
 )
 
@@ -33,13 +32,4 @@ target_include_directories(remote_access_tool
 target_link_libraries(remote_access_tool
     PRIVATE
         pthread
-)
-
-# Copy the final binary to a bin/ folder (optional)
-add_custom_command(TARGET remote_access_tool POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/bin"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "$<TARGET_FILE:remote_access_tool>"
-            "${CMAKE_SOURCE_DIR}/bin/remote_access_tool"
-    COMMENT "Copying remote access tool to ./bin/"
 )
