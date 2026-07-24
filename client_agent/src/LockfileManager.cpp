@@ -1,87 +1,45 @@
 // client_agent/src/LockfileManager.cpp
 #include "LockfileManager.hpp"
-#include <iostream>
 #include <fstream>
-#include <fcntl.h>
+#include <iostream>
 #include <unistd.h>
-#include <errno.h>
+#include <fcntl.h>
+#include <cerrno>
+#include <cstring>
 #include <signal.h>
 
-LockfileManager::LockfileManager() : m_locked(false) {}
+bool LockfileManager::acquire() {
+    if (m_locked) return true;
 
-LockfileManager::~LockfileManager() {
-    releaseLock();
-}
-
-bool LockfileManager::acquireLock() {
-    if (m_locked)
-        return true;
-
-    const std::string path = "/tmp/client_agent.lock";
-
-    if (createLock(path))
-        return true;
-
-    if (isLockStale(path)) {
-        std::cout << "Removing stale lockfile " << path << "\n";
-        unlink(path.c_str());
-
-        if (createLock(path))
-            return true;
-
+    // If a lockfile already exists, check whether its PID is still alive.
+    {
+        std::ifstream f(kPath);
+        pid_t pid = 0;
+        if (f >> pid && pid > 0 && kill(pid, 0) == 0) {
+            std::cerr << "Another instance is running (PID " << pid << ")\n";
+            return false;
+        }
     }
-    
-    std::cerr << "Another instance is running (lockfile exists). Exiting.\n";
-    return false;
-}
 
-void LockfileManager::releaseLock() {
-    if (!m_locked)
-        return;
+    unlink(kPath);  // remove stale lockfile, if any
 
-    unlink(m_lockfile_path.c_str());
-    m_locked = false;
-    m_lockfile_path.clear();
-}
-
-bool LockfileManager::createLock(const std::string& path) {
-    if (!tryLockPath(path))
+    // O_EXCL gives us atomic creation — fails if another process just created it.
+    int fd = open(kPath, O_CREAT | O_EXCL | O_WRONLY, 0644);
+    if (fd < 0) {
+        std::cerr << "Could not create lockfile " << kPath
+                  << ": " << strerror(errno) << "\n";
         return false;
+    }
+    close(fd);
+    std::ofstream(kPath) << getpid() << "\n";
 
     m_locked = true;
-    m_lockfile_path = path;
-    writePid();
-    std::cout << "Created lockfile " << m_lockfile_path << "\n";
+    std::cout << "Lockfile: " << kPath << "\n";
     return true;
 }
 
-bool LockfileManager::tryLockPath(const std::string& path) {
-    int fd = open(path.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0644);
-    if (fd >= 0) {
-        close(fd);
-        return true;
-    }
-    return false;
-}
-
-bool LockfileManager::isLockStale(const std::string& path) {
-    std::ifstream f(path);
-    if (!f.is_open())
-        return true;
-
-    pid_t pid = 0;
-    f >> pid;
-    if (pid <= 0)
-        return true;
-
-    if (kill(pid, 0) == 0)
-        return false;
-
-    return (errno == ESRCH);
-}
-
-void LockfileManager::writePid() {
-    std::ofstream f(m_lockfile_path);
-    if (f)
-        f << getpid() << "\n";
+void LockfileManager::release() {
+    if (!m_locked) return;
+    unlink(kPath);
+    m_locked = false;
 }

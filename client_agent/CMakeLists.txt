@@ -7,13 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Find or fetch nlohmann/json
 find_package(nlohmann_json REQUIRED)
 
-# Find dbus-1
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(DBUS REQUIRED dbus-1)
-
 set(SOURCES
     src/Agent.cpp
-    src/MessageHandler.cpp
     src/TCPClient.cpp
     src/LockfileManager.cpp
     src/main.cpp

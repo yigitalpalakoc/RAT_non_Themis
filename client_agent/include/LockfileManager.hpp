@@ -1,20 +1,15 @@
-#pragma once
 // client_agent/src/LockfileManager.hpp
-
-#include <string>
+#pragma once
 
 class LockfileManager {
 public:
-    LockfileManager();
-    ~LockfileManager();
-    bool acquireLock();
-    void releaseLock();
+    LockfileManager()  = default;
+    ~LockfileManager() { release(); }
+
+    bool acquire();
+    void release();
 
 private:
-    bool tryLockPath(const std::string& path);
-    bool isLockStale(const std::string& path);
-    void writePid();
-    bool createLock(const std::string& path);
+    static constexpr const char* kPath = "/tmp/client_agent.lock";
     bool m_locked = false;
-    std::string m_lockfile_path;
 };
