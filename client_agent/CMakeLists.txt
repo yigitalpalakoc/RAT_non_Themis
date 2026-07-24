@@ -4,8 +4,7 @@ project(client_agent LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find or fetch nlohmann/json
-find_package(nlohmann_json REQUIRED)
+find_package(nlohmann_json QUIET)
 
 set(SOURCES
     src/Agent.cpp
@@ -18,11 +17,10 @@ add_executable(client_agent ${SOURCES})
 
 target_include_directories(client_agent PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${nlohmann_json_INCLUDE_DIR}
-    ${DBUS_INCLUDE_DIRS}
 )
 
+# Link libraries
 target_link_libraries(client_agent PRIVATE
-    ${DBUS_LIBRARIES}
+    nlohmann_json::nlohmann_json
     pthread
 )
