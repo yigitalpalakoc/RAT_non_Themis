@@ -10,13 +10,11 @@ public:
     bool acquireLock();
     void releaseLock();
 
-    bool isLocked() const;
-
 private:
     bool tryLockPath(const std::string& path);
     bool isLockStale(const std::string& path);
     void writePid();
-
+    bool createLock(const std::string& path);
     bool m_locked = false;
     std::string m_lockfile_path;
 };

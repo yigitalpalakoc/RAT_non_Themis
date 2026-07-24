@@ -2,7 +2,6 @@
 #include "LockfileManager.hpp"
 #include <iostream>
 #include <fstream>
-#include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -18,43 +17,26 @@ bool LockfileManager::acquireLock() {
     if (m_locked)
         return true;
 
-    const char* paths[] = {
-        "/tmp/client_agent.lock",
-        nullptr
-    };
+    const std::string path = "/tmp/client_agent.lock";
 
-    for (int i = 0; paths[i]; i++) {
-        const std::string path = paths[i];
+    if (createLock(path))
+        return true;
 
-        if (tryLockPath(path)) {
-            m_locked = true;
-            m_lockfile_path = path;
-            writePid();
-            std::cout << "Created lockfile " << m_lockfile_path << "\n";
-            return true;
-        }
-
-        if (!isLockStale(path))
-            continue;
-
+    if (isLockStale(path)) {
         std::cout << "Removing stale lockfile " << path << "\n";
         unlink(path.c_str());
 
-        if (tryLockPath(path)) {
-            m_locked = true;
-            m_lockfile_path = path;
-            writePid();
-            std::cout << "Created lockfile " << m_lockfile_path << "\n";
+        if (createLock(path))
             return true;
-        }
-    }
 
+    }
+    
     std::cerr << "Another instance is running (lockfile exists). Exiting.\n";
     return false;
 }
 
 void LockfileManager::releaseLock() {
-    if (!m_locked || m_lockfile_path.empty())
+    if (!m_locked)
         return;
 
     unlink(m_lockfile_path.c_str());
@@ -62,8 +44,15 @@ void LockfileManager::releaseLock() {
     m_lockfile_path.clear();
 }
 
-bool LockfileManager::isLocked() const {
-    return m_locked;
+bool LockfileManager::createLock(const std::string& path) {
+    if (!tryLockPath(path))
+        return false;
+
+    m_locked = true;
+    m_lockfile_path = path;
+    writePid();
+    std::cout << "Created lockfile " << m_lockfile_path << "\n";
+    return true;
 }
 
 bool LockfileManager::tryLockPath(const std::string& path) {
