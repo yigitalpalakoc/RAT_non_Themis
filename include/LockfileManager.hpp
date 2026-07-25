@@ -1,20 +1,15 @@
-#pragma once
 // remote_access_tool/src/LockfileManager.hpp
-
-#include <string>
+#pragma once
 
 class LockfileManager {
 public:
-    LockfileManager();
-    ~LockfileManager();
-    bool acquireLock();
-    void releaseLock();
-    bool isLocked() const;
+    LockfileManager()  = default;
+    ~LockfileManager() { release(); }
+
+    bool acquire();
+    void release();
 
 private:
-    bool tryLockPath(const std::string& path);
-    bool isLockStale(const std::string& path);
-    void writePid();
+    static constexpr const char* kPath = "/tmp/rat.lock";
     bool m_locked = false;
-    std::string m_lockfile_path;
 };

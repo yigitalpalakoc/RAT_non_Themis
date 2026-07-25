@@ -17,7 +17,6 @@ set(SOURCES
     src/SCPManager.cpp
     src/LockfileManager.cpp
     src/RemoteController.cpp
-    src/MessageHandler.cpp
     src/TCPHandler.cpp
 )
 

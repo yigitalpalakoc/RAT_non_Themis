@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <map>
+#include <fstream>
+#include <mutex>
 
 class RemoteController {
 public:
@@ -26,6 +29,7 @@ private:
     void handleScpCommandOriginal(const std::string& line);
     void handleShellCommandOriginal(const std::string& line);
     void handlePluginCommand(const std::string& line);
+    void handleMsgCommand(const std::string& line);
     void cmdStatus();
     void cmdMsg(const std::string& clientId, const std::string& text);
     void cmdBroadcast(const std::string& text);
@@ -41,6 +45,9 @@ private:
     std::vector<Client> getClientsByTag(const std::string& tag) const;
     std::vector<std::string> tokenize(const std::string& str, char delimiter = ' ') const;
     bool isBlank(const std::string& str) const;
+    std::map<std::string, std::ofstream> m_logs;
+    std::mutex m_logMutex;
+    void logMessage(const std::string& clientId, const std::string& dir, const std::string& msg);
 
     std::vector<Client> m_clients;
     std::unique_ptr<TCPHandler> m_tcpHandler;
