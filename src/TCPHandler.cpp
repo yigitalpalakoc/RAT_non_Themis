@@ -336,6 +336,12 @@ void TCPHandler::serverClientThread(int clientFd, const std::string& ip, int por
             m_clientsById.erase(it->second->clientId);
             m_clientsByFd.erase(it);
         }
+        auto tit = m_clientThreads.find(clientFd);
+        if (tit != m_clientThreads.end()) {
+            tit->second.detach();
+            m_clientThreads.erase(tit);
+        }
+
     }
 
     if (!authenticatedClientId.empty() && m_connectionCallback) {
