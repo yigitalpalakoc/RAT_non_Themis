@@ -5,7 +5,6 @@ project(remote_access_tool LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find nlohmann/json (header‑only)
 find_package(nlohmann_json REQUIRED)
 
 # All source files for the unified tool
